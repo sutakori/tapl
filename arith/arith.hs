@@ -5,6 +5,8 @@ data Term = TmTrue
           | TmSucc Term
           | TmPred Term
           | TmIsZero Term
+          | Stuck
+  deriving (Show,Eq)
 
 isnumericval :: Term->Bool
 isnumericval TmZero = True
@@ -17,25 +19,33 @@ isval TmFalse = True
 isval nv | isnumericval nv = True
 isval _ = False
 
+isNoRuleApply :: Term -> Bool
+isNoRuleApply n | isval n = True
+                | (n == Stuck) = True
+                | otherwise = False
 
-eval1 :: Term->Maybe Term
-eval1 (TmIf TmTrue t1 t2) = Just t1
-eval1 (TmIf TmFalse t1 t2) = Just t2
-eval1 (TmIf t1 t2 t3) = Just (TmIf t1' t2 t3)
+eval1 :: Term->Term
+eval1 (TmIf Stuck t1 t2) = Stuck
+eval1 (TmIf TmTrue t1 t2) = t1
+eval1 (TmIf TmFalse t1 t2) = t2
+eval1 (TmIf t1 t2 t3) = TmIf t1' t2 t3
   where t1' = eval1 t1
-eval1 (TmSucc t1) = Just (TmSucc t1')
+eval1 (TmSucc Stuck) = Stuck
+eval1 (TmSucc t1) = TmSucc t1'
   where t1' = eval1 t1
-eval1 (TmPred t1) = Just (TmPred t1')
+eval1 (TmPred Stuck) = Stuck
+eval1 (TmPred TmZero) = TmZero
+eval1 (TmPred (TmSucc nv1)) | isnumericval nv1 = nv1
+eval1 (TmPred t1) = TmPred t1'
   where t1' = eval1 t1
-eval1 (TmPred TmZero) = Just TmZero
-eval1 (TmPred (TmSucc nv1)) | isnumericval nv1 = Just nv1
-eval1 (TmIsZero t1) = Just (TmIsZero t1')
+eval1 (TmIsZero Stuck) = Stuck
+eval1 (TmIsZero t1) = TmIsZero t1'
   where t1' = eval1 t1
-eval1 (TmIsZero TmZero) = Just TmTrue
-eval1 (TmIsZero nv1) | isnumericval nv1 = Just TmFalse
-eval1 _ = Nothing
+eval1 (TmIsZero TmZero) = TmTrue
+eval1 (TmIsZero nv1) | isnumericval nv1 = TmFalse
+eval1 _ = Stuck
 
-eval :: Term->Maybe Term
-eval t = eval t'
-  where t' = eval1 t
+eval :: Term->Term
+eval t | isNoRuleApply t = t
+       | otherwise = eval (eval1 t)
 
