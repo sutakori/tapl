@@ -1,3 +1,5 @@
+module arith where
+
 data Term = TmTrue
           | TmFalse
           | TmIf Term Term Term
