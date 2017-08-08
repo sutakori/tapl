@@ -6,7 +6,7 @@ data Term = TmVar Integer
   deriving(Show,Eq)
 
 eval1 :: Term -> Term
-eval1 (TmApply t1 t2) | (isValue t1) && (isValue t2) = termShift (-1) (termSubst 0 (termShift 1 t2) t1)
+eval1 (TmApply t1@(TmAbs inner) t2) | (isValue t1) && (isValue t2) = termShift (-1) (termSubst 0 (termShift 1 t2) inner)
 eval1 (TmApply t1 t2) | isValue t1 =TmApply t1 t2'
   where t2' = eval1 t2
 eval1 (TmApply t1 t2) = TmApply t1' t2
@@ -25,12 +25,11 @@ termShift d t = walk 0 t
 
 --[j->s]t
 termSubst :: Integer -> Term -> Term -> Term
-termSubst j s t = innerExp (walk 0 t)
-  where walk d (TmVar k) | k==j =termShift d s
+termSubst j s t = walk 0 t
+  where walk d (TmVar k) | k==j+d =termShift d s
                          | otherwise = (TmVar k)
         walk d (TmAbs t) = TmAbs (walk (d+1) t)
         walk d (TmApply t1 t2) = TmApply (walk d t1) (walk d t2)
-        innerExp t@(TmAbs e) = e
 
 eval :: Term -> Term
 eval t | isValue t = t
